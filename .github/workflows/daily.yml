@@ -1,0 +1,40 @@
+name: Daily BTC Signals Update
+
+# 触发条件
+on:
+  schedule:
+    # GitHub Actions cron 只认 UTC，且不会自动处理夏令时。
+    # 目标：美国东部时间 15:00
+    #   夏令时 EDT (3月~11月, UTC-4): 美东15:00 = UTC 19:00  ← 当前使用
+    #   冬令时 EST (11月~3月, UTC-5): 美东15:00 = UTC 20:00
+    # 【夏令时结束时(约11月初)，把下面的 19 改成 20】
+    - cron: "0 19 * * *"
+  workflow_dispatch:   # 允许在 GitHub 网页手动点按钮触发（调试用）
+
+# 最小权限原则：本任务不需要写仓库内容
+permissions:
+  contents: read
+
+jobs:
+  update-signals:
+    runs-on: ubuntu-latest   # GitHub 托管的标准 runner，公开仓库免费
+    timeout-minutes: 10      # 防卡死，超时自动终止
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run signal updater
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          BGAPI_TOKEN: ${{ secrets.BGAPI_TOKEN }}
+        run: python main.py
