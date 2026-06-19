@@ -131,9 +131,10 @@ INDICATORS = [
         "key": "stablecoin",
         "notion_name": "稳定币供应",
         "source": "stablecoin_mcap",
-        # 稳定币市值无固定"顶部阈值"，用同比变化代理；这里简化为占位，建议手工微调
-        "progress": ("progress_up", 0.0, 1.0),
-        "enabled": False,   # 需要历史基线，路线A先关，避免假信号
+        # 返回值=当前供应相对90日均值的偏离%（双向）
+        # 映射：-8%(大幅收缩/偏冷) → 0；0%(持平) → 50；+8%(大幅扩张/资金涌入) → 100
+        "progress": ("progress_up", -8.0, 8.0),
+        "enabled": True,
     },
     {
         "key": "funding",

@@ -167,16 +167,47 @@ def funding_rate():
 
 
 def stablecoin_mcap():
-    """稳定币总市值（美元）。DefiLlama 免费。"""
-    r = _get("https://stablecoins.llama.fi/stablecoins?includePrices=false")
+    """
+    稳定币供应信号 = 当前总市值相对 90 日均值的偏离百分比。
+    DefiLlama 免费历史端点 /stablecoincharts/all。
+
+    返回偏离度（%）：
+      正值 = 当前供应高于90日均值 = 稳定币扩张 = 资金入场（偏多/偏热）
+      负值 = 收缩 = 资金流出（偏冷）
+    返回 None 表示采集失败。
+
+    注：返回的是"偏离度"而非绝对市值，因为绝对值无"距顶"含义；
+    偏离度才能映射成方向性信号。归一化在 config 的 progress 规则里完成。
+    """
+    r = _get("https://stablecoins.llama.fi/stablecoincharts/all")
     if r is None:
         return None
     try:
-        total = 0.0
-        for s in r.json()["peggedAssets"]:
-            cm = s.get("circulating", {})
-            total += float(cm.get("peggedUSD", 0) or 0)
-        return total
+        data = r.json()
+        if not isinstance(data, list) or len(data) < 90:
+            print("  [warn] stablecoin: 历史数据不足90天")
+            return None
+        # 提取每日总市值序列（字段名兜底）
+        series = []
+        for row in data:
+            v = row.get("totalCirculatingUSD")
+            if isinstance(v, dict):
+                val = v.get("peggedUSD")
+            else:
+                val = v
+            if val is not None:
+                try:
+                    series.append(float(val))
+                except (ValueError, TypeError):
+                    pass
+        if len(series) < 90:
+            return None
+        current = series[-1]
+        ma90 = sum(series[-90:]) / 90
+        if ma90 == 0:
+            return None
+        deviation = (current - ma90) / ma90 * 100.0
+        return deviation
     except Exception as e:
         print(f"  [warn] stablecoin parse: {e}")
         return None
