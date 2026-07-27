@@ -17,10 +17,10 @@ BTC 三层共振信号库 - 配置文件
 # ============================================================
 # Notion 数据源（collection）ID —— 写回时定位每一行
 # ============================================================
-NOTION_DATA_SOURCE_ID = "6a7ace0c-8bd5-483c-9cc4-de60fb3a4ee1"
+NOTION_DATA_SOURCE_ID = "707e82bf-b2a4-4a8d-820c-3bae92fe9f0b"
 
 # Notion 数据库 page_id（用于查询所有行）
-NOTION_DATABASE_ID = "767ed855-e477-453f-a1fe-7b10525f9c31"
+NOTION_DATABASE_ID = "d369670c-92d4-4046-b0c0-bcd9c2892c44"
 
 # Notion API 版本
 NOTION_VERSION = "2022-06-28"
