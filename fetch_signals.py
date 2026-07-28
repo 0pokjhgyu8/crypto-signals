@@ -7,7 +7,7 @@ BTC 三层共振信号库 - 数据采集层
 数据源全部免费：
   FRED          - 联邦基金利率（需免费 API key，存 GitHub Secret）
   Alternative.me- 恐惧贪婪指数（无需 key）
-  CoinGecko     - BTC 历史价格（自算 Mayer / Pi Cycle / 200周线）
+  Coinbase      - BTC 历史价格（自算 Mayer / Pi Cycle / 200周线）
   OKX           - Funding Rate（对地域比 Binance 宽松）
   DefiLlama     - 稳定币市值（备用）
 
@@ -48,24 +48,58 @@ _PRICE_CACHE = {"daily": None}
 
 def _btc_daily_prices(days=1460):
     """
-    CoinGecko BTC 日线收盘价，返回 [price, ...] 旧->新。
+    Coinbase Exchange BTC-USD 日线收盘价，返回 [price, ...] 旧->新。
     用于自算 Mayer / Pi Cycle / 200周线。缓存避免重复请求。
+
+    端点 /products/BTC-USD/candles 单次最多返回 300 根 K 线，
+    故按 300 天一段从今往前分页拉取，再按时间升序拼接。
+    K 线结构：[time, low, high, open, close, volume]，收盘价取索引 4。
     """
     if _PRICE_CACHE["daily"] is not None:
         return _PRICE_CACHE["daily"]
-    r = _get(
-        "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart",
-        params={"vs_currency": "usd", "days": str(days), "interval": "daily"},
-    )
-    if r is None:
+
+    url = "https://api.exchange.coinbase.com/products/BTC-USD/candles"
+    granularity = 86400
+    max_candles = 300
+    chunk = granularity * max_candles  # 每页覆盖的秒数
+
+    end_ts = int(time.time())
+    start_floor = end_ts - days * granularity
+    by_time = {}  # 以 K 线时间戳去重（分页边界可能重叠）
+
+    while end_ts > start_floor:
+        seg_start = max(start_floor, end_ts - chunk)
+        r = _get(
+            url,
+            params={
+                "granularity": str(granularity),
+                "start": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(seg_start)),
+                "end": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(end_ts)),
+            },
+        )
+        if r is None:
+            break
+        try:
+            candles = r.json()
+        except Exception as e:
+            print(f"  [warn] price parse: {e}")
+            break
+        if not isinstance(candles, list) or not candles:
+            break
+        for c in candles:
+            try:
+                by_time[int(c[0])] = float(c[4])
+            except (ValueError, TypeError, IndexError):
+                pass
+        end_ts = seg_start
+        time.sleep(0.35)  # 公共端点限速约 10 req/s，留足余量
+
+    if not by_time:
+        print("  [warn] Coinbase candles: 无有效数据")
         return None
-    try:
-        prices = [p[1] for p in r.json()["prices"]]
-        _PRICE_CACHE["daily"] = prices
-        return prices
-    except Exception as e:
-        print(f"  [warn] price parse: {e}")
-        return None
+    prices = [by_time[t] for t in sorted(by_time)]
+    _PRICE_CACHE["daily"] = prices
+    return prices
 
 
 def _sma(values, n):
