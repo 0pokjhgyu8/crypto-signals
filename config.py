@@ -98,12 +98,15 @@ INDICATORS = [
         "enabled": True,
     },
 
-    # ---------- ② 链上估值（BGeometrics 官方直出，优于自算）----------
-    {"key": "mvrv", "notion_name": "MVRV Z-score", "source": "bg_mvrv_zscore",
+    # ---------- ② 链上估值 ----------
+    # 优先用 Coin Metrics 社区版自算：无 key、限额宽松。
+    # BGeometrics 免费档只有 8次/小时、15次/天，6 个指标全压上去会互相挤爆配额
+    # （且 _get 的重试会让每次失败消耗 3 次），故只把自算不了的 SOPR 留给它。
+    {"key": "mvrv", "notion_name": "MVRV Z-score", "source": "mvrv_zscore",
      "progress": ("progress_up", 0.0, 7.0), "enabled": True},
-    {"key": "nupl", "notion_name": "NUPL 净未实现盈亏", "source": "bg_nupl",
+    {"key": "nupl", "notion_name": "NUPL 净未实现盈亏", "source": "nupl",
      "progress": ("progress_up", 0.0, 0.75), "enabled": True},
-    {"key": "puell", "notion_name": "Puell Multiple", "source": "bg_puell",
+    {"key": "puell", "notion_name": "Puell Multiple", "source": "puell_multiple",
      "progress": ("progress_up", 0.5, 4.0), "enabled": True},
     # SOPR：BGeometrics 官方直出，自算不可行的问题已解决
     # 进度区间 0.97(熊底投降)→1.04(牛顶获利了结)，当前1.001约46%(中性)
@@ -123,7 +126,8 @@ INDICATORS = [
     {
         "key": "fear_greed",
         "notion_name": "恐惧贪婪指数",
-        "source": "bg_fear_greed",
+        # Alternative.me 免费无限额，回到设计文档的原始选择
+        "source": "fear_greed",
         "progress": ("progress_up", 20.0, 80.0),   # 20恐惧 80贪婪
         "enabled": True,
     },
@@ -139,7 +143,8 @@ INDICATORS = [
     {
         "key": "funding",
         "notion_name": "Funding Rate",
-        "source": "bg_funding_rate",
+        # OKX 公开端点，无配额压力，回到设计文档的原始选择
+        "source": "funding_rate",
         "progress": ("progress_up", 0.0, 0.1),     # 当前费率%，>=0.1%过热
         "enabled": True,
     },

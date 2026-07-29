@@ -34,6 +34,10 @@ def _get(url, params=None, headers=None, retries=2):
             if r.status_code == 200:
                 return r
             print(f"  [warn] {url} -> HTTP {r.status_code}")
+            # 401/403 是权限拒绝，429 是配额已耗尽——重试都不会变好，
+            # 429 还会继续吃配额（BGeometrics 免费档 8次/小时尤其敏感）。
+            if r.status_code in (401, 403, 429):
+                return None
         except Exception as e:
             print(f"  [warn] {url} -> {e}")
         time.sleep(1.5 * (attempt + 1))

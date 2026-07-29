@@ -115,9 +115,9 @@ def update_row(page_id, value, progress):
         "最近更新": {"date": {"start": today}},
     }
     if progress is not None:
-        # 「当前进度」在 Notion 里是 text 类型（与「当前值」一致），
-        # 写成 number 会被 API 拒绝：expected to be rich_text。
-        props["当前进度"] = {"rich_text": [{"text": {"content": f"{progress:.1f}"}}]}
+        # 「当前进度」是 Notion 的 number 列：档位公式要拿它做数值比较，
+        # 排序和进度条也依赖数字。改这里必须同步改 Notion 的列类型，反之亦然。
+        props["当前进度"] = {"number": round(progress, 2)}
     r = requests.patch(
         f"{NOTION_API}/pages/{page_id}",
         headers=_notion_headers(),
