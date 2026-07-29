@@ -98,7 +98,11 @@ INDICATORS = [
         "enabled": True,
     },
 
-    # ---------- ② 链上估值（BGeometrics 官方直出，优于自算）----------
+    # ---------- ② 链上估值（BGeometrics 官方直出）----------
+    # 曾尝试改用 Coin Metrics 社区版自算以省配额，实测 runner 上
+    # CapMrktCurUSD/CapRealUSD 返回 403、IssuanceUSD 返回 400（社区版已不开放
+    # 这些字段，fetch_signals.py 里「已验证社区版可用」的注释是过时的），故退回 BG。
+    # 恐惧贪婪与 Funding Rate 已迁到免费无限额的源，BG 用量 6 -> 4，配额够用。
     {"key": "mvrv", "notion_name": "MVRV Z-score", "source": "bg_mvrv_zscore",
      "progress": ("progress_up", 0.0, 7.0), "enabled": True},
     {"key": "nupl", "notion_name": "NUPL 净未实现盈亏", "source": "bg_nupl",
@@ -121,9 +125,20 @@ INDICATORS = [
         "enabled": True,
     },
     {
+        "key": "real_rate_10y",
+        "notion_name": "美国实际利率 10Y",
+        "source": "fred_real_rate_10y",
+        # 实际利率越高＝真实资金成本越贵＝对 BTC 越不利（偏顶/偏热端），故 progress_up。
+        # 区间参考近年实测：2021 宽松期约 -1%，2023-24 紧缩期约 2.5%，中性约 0.5~1%。
+        # 【这两个阈值是按历史区间估的，觉得不合适直接改这两个数字即可】
+        "progress": ("progress_up", 0.0, 2.5),
+        "enabled": True,
+    },
+    {
         "key": "fear_greed",
         "notion_name": "恐惧贪婪指数",
-        "source": "bg_fear_greed",
+        # Alternative.me 免费无限额，回到设计文档的原始选择
+        "source": "fear_greed",
         "progress": ("progress_up", 20.0, 80.0),   # 20恐惧 80贪婪
         "enabled": True,
     },
@@ -139,7 +154,8 @@ INDICATORS = [
     {
         "key": "funding",
         "notion_name": "Funding Rate",
-        "source": "bg_funding_rate",
+        # OKX 公开端点，无配额压力，回到设计文档的原始选择
+        "source": "funding_rate",
         "progress": ("progress_up", 0.0, 0.1),     # 当前费率%，>=0.1%过热
         "enabled": True,
     },

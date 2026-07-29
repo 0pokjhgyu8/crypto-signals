@@ -115,6 +115,8 @@ def update_row(page_id, value, progress):
         "最近更新": {"date": {"start": today}},
     }
     if progress is not None:
+        # 「当前进度」是 Notion 的 number 列：档位公式要拿它做数值比较，
+        # 排序和进度条也依赖数字。改这里必须同步改 Notion 的列类型，反之亦然。
         props["当前进度"] = {"number": round(progress, 2)}
     r = requests.patch(
         f"{NOTION_API}/pages/{page_id}",
@@ -197,10 +199,22 @@ def main():
             print(f"  [fail] {name} 写回失败: {err}")
             fail += 1
 
+    # Notion 里有行、config 里没有对应条目的，采集循环根本不会碰到它，
+    # 连 [skip] 都不会打印。「美国实际利率 10Y」就这样静默漏了很久，这里点名。
+    orphans = sorted(set(rows) - {i["notion_name"] for i in config.INDICATORS})
+    if orphans:
+        print(f"\n  [warn] Notion 有行但 config 无条目（永不自动更新）: {'、'.join(orphans)}")
+
     print("\n[3/3] 完成")
     print(f"  成功 {ok} | 失败 {fail} | 跳过 {skip}")
-    # 失败不让整个 Action 标红（部分源地域受限是预期内的），仅记录
     print("=" * 50)
+
+    # 个别源失败是预期内的（地域限制、限流），不因此标红；
+    # 但一条都没成功说明是系统性故障（token 失效、字段类型不匹配等），
+    # 必须让 Action 变红，否则会像之前那样连续多天静默坏掉。
+    if ok == 0 and fail > 0:
+        print("[fatal] 无任何指标写回成功，判定为系统性故障")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
