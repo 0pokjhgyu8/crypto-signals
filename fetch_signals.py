@@ -137,6 +137,36 @@ def fred_ffr():
         return None
 
 
+def fred_real_rate_10y():
+    """
+    10年期实际利率（%）= FRED 系列 DFII10（10年期通胀保值国债收益率）。
+    该序列是日频，周末和假日会返回 "."，故多取几条、回退到最近一个有效值。
+    """
+    key = os.environ.get("FRED_API_KEY")
+    if not key:
+        print("  [skip] FRED_API_KEY 未设置")
+        return None
+    r = _get(
+        "https://api.stlouisfed.org/fred/series/observations",
+        params={
+            "series_id": "DFII10", "api_key": key, "file_type": "json",
+            "sort_order": "desc", "limit": 10,
+        },
+    )
+    if r is None:
+        return None
+    try:
+        for obs in r.json()["observations"]:
+            v = obs.get("value")
+            if v not in (".", "", None):
+                return float(v)
+        print("  [warn] DFII10 最近10条均无有效值")
+        return None
+    except Exception as e:
+        print(f"  [warn] real rate parse: {e}")
+        return None
+
+
 def fear_greed():
     """恐惧贪婪指数 0-100"""
     r = _get("https://api.alternative.me/fng/?limit=1")
@@ -471,6 +501,7 @@ def coinbase_premium():
 FETCHERS = {
     # 免费源 / 自算
     "fred_ffr": fred_ffr,
+    "fred_real_rate_10y": fred_real_rate_10y,
     "fear_greed": fear_greed,
     "mayer_multiple": mayer_multiple,
     "pi_cycle": pi_cycle,

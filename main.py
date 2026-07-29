@@ -199,6 +199,12 @@ def main():
             print(f"  [fail] {name} 写回失败: {err}")
             fail += 1
 
+    # Notion 里有行、config 里没有对应条目的，采集循环根本不会碰到它，
+    # 连 [skip] 都不会打印。「美国实际利率 10Y」就这样静默漏了很久，这里点名。
+    orphans = sorted(set(rows) - {i["notion_name"] for i in config.INDICATORS})
+    if orphans:
+        print(f"\n  [warn] Notion 有行但 config 无条目（永不自动更新）: {'、'.join(orphans)}")
+
     print("\n[3/3] 完成")
     print(f"  成功 {ok} | 失败 {fail} | 跳过 {skip}")
     print("=" * 50)

@@ -125,6 +125,16 @@ INDICATORS = [
         "enabled": True,
     },
     {
+        "key": "real_rate_10y",
+        "notion_name": "美国实际利率 10Y",
+        "source": "fred_real_rate_10y",
+        # 实际利率越高＝真实资金成本越贵＝对 BTC 越不利（偏顶/偏热端），故 progress_up。
+        # 区间参考近年实测：2021 宽松期约 -1%，2023-24 紧缩期约 2.5%，中性约 0.5~1%。
+        # 【这两个阈值是按历史区间估的，觉得不合适直接改这两个数字即可】
+        "progress": ("progress_up", 0.0, 2.5),
+        "enabled": True,
+    },
+    {
         "key": "fear_greed",
         "notion_name": "恐惧贪婪指数",
         # Alternative.me 免费无限额，回到设计文档的原始选择
