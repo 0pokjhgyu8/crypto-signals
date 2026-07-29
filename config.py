@@ -98,15 +98,16 @@ INDICATORS = [
         "enabled": True,
     },
 
-    # ---------- ② 链上估值 ----------
-    # 优先用 Coin Metrics 社区版自算：无 key、限额宽松。
-    # BGeometrics 免费档只有 8次/小时、15次/天，6 个指标全压上去会互相挤爆配额
-    # （且 _get 的重试会让每次失败消耗 3 次），故只把自算不了的 SOPR 留给它。
-    {"key": "mvrv", "notion_name": "MVRV Z-score", "source": "mvrv_zscore",
+    # ---------- ② 链上估值（BGeometrics 官方直出）----------
+    # 曾尝试改用 Coin Metrics 社区版自算以省配额，实测 runner 上
+    # CapMrktCurUSD/CapRealUSD 返回 403、IssuanceUSD 返回 400（社区版已不开放
+    # 这些字段，fetch_signals.py 里「已验证社区版可用」的注释是过时的），故退回 BG。
+    # 恐惧贪婪与 Funding Rate 已迁到免费无限额的源，BG 用量 6 -> 4，配额够用。
+    {"key": "mvrv", "notion_name": "MVRV Z-score", "source": "bg_mvrv_zscore",
      "progress": ("progress_up", 0.0, 7.0), "enabled": True},
-    {"key": "nupl", "notion_name": "NUPL 净未实现盈亏", "source": "nupl",
+    {"key": "nupl", "notion_name": "NUPL 净未实现盈亏", "source": "bg_nupl",
      "progress": ("progress_up", 0.0, 0.75), "enabled": True},
-    {"key": "puell", "notion_name": "Puell Multiple", "source": "puell_multiple",
+    {"key": "puell", "notion_name": "Puell Multiple", "source": "bg_puell",
      "progress": ("progress_up", 0.5, 4.0), "enabled": True},
     # SOPR：BGeometrics 官方直出，自算不可行的问题已解决
     # 进度区间 0.97(熊底投降)→1.04(牛顶获利了结)，当前1.001约46%(中性)
