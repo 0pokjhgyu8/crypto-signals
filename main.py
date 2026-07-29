@@ -115,7 +115,9 @@ def update_row(page_id, value, progress):
         "最近更新": {"date": {"start": today}},
     }
     if progress is not None:
-        props["当前进度"] = {"number": round(progress, 2)}
+        # 「当前进度」在 Notion 里是 text 类型（与「当前值」一致），
+        # 写成 number 会被 API 拒绝：expected to be rich_text。
+        props["当前进度"] = {"rich_text": [{"text": {"content": f"{progress:.1f}"}}]}
     r = requests.patch(
         f"{NOTION_API}/pages/{page_id}",
         headers=_notion_headers(),
@@ -199,8 +201,14 @@ def main():
 
     print("\n[3/3] 完成")
     print(f"  成功 {ok} | 失败 {fail} | 跳过 {skip}")
-    # 失败不让整个 Action 标红（部分源地域受限是预期内的），仅记录
     print("=" * 50)
+
+    # 个别源失败是预期内的（地域限制、限流），不因此标红；
+    # 但一条都没成功说明是系统性故障（token 失效、字段类型不匹配等），
+    # 必须让 Action 变红，否则会像之前那样连续多天静默坏掉。
+    if ok == 0 and fail > 0:
+        print("[fatal] 无任何指标写回成功，判定为系统性故障")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
