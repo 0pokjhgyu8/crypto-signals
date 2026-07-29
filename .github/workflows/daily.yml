@@ -3,12 +3,15 @@ name: Daily BTC Signals Update
 # 触发条件
 on:
   schedule:
-    # GitHub Actions cron 只认 UTC，且不会自动处理夏令时。
-    # 目标：美国东部时间 15:00
-    #   夏令时 EDT (3月~11月, UTC-4): 美东15:00 = UTC 19:00  ← 当前使用
-    #   冬令时 EST (11月~3月, UTC-5): 美东15:00 = UTC 20:00
-    # 【夏令时结束时(约11月初)，把下面的 19 改成 20】
+    # 目标：美国东部时间 15:00。GitHub Actions 的 cron 只认 UTC 且不处理夏令时，
+    # 所以两个时刻都挂上，再由下面的 guard 步骤按纽约时区判断当下是否真的是 15:00，
+    # 不是就跳过。切换夏令时那天自动对齐，无需每半年手工改这个数字。
+    #   夏令时 EDT (UTC-4): 美东 15:00 = UTC 19:00
+    #   冬令时 EST (UTC-5): 美东 15:00 = UTC 20:00
+    # 代价：每天多跑一次几秒钟的空转（公开仓库免费，可忽略）。
+    # 若美国日后真的永久实行夏令时，可以删掉一条 cron 和 guard 步骤，写死即可。
     - cron: "0 19 * * *"
+    - cron: "0 20 * * *"
   workflow_dispatch:   # 允许在 GitHub 网页手动点按钮触发（调试用）
 
 # 最小权限原则：本任务不需要写仓库内容
@@ -21,18 +24,36 @@ jobs:
     timeout-minutes: 10      # 防卡死，超时自动终止
 
     steps:
+      # 两条 cron 每天各触发一次，只有恰好是纽约 15:00 的那次继续往下走。
+      # 手动触发（workflow_dispatch）不受此限制，随时可跑。
+      - name: Check whether it is 15:00 in New York
+        id: guard
+        run: |
+          hour=$(TZ=America/New_York date +%H)
+          echo "纽约当前时刻: ${hour}:00"
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$hour" = "15" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "非美东 15:00，本次定时触发跳过（今天的另一条 cron 会命中）"
+          fi
+
       - name: Checkout repo
+        if: steps.guard.outputs.proceed == 'true'
         uses: actions/checkout@v4
 
       - name: Set up Python
+        if: steps.guard.outputs.proceed == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: Install dependencies
+        if: steps.guard.outputs.proceed == 'true'
         run: pip install -r requirements.txt
 
       - name: Run signal updater
+        if: steps.guard.outputs.proceed == 'true'
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
