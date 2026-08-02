@@ -107,24 +107,6 @@ def query_rows():
     return mapping2 or mapping
 
 
-def _signal_of(progress):
-    """
-    进度 -> 信号状态（写入 Notion 的 select 列）。
-    阈值复用「档位得分」公式的 60/40 分界，保持对称：
-      >=60 (档位 +1/+2) -> 逃顶
-      40-60 (档位 0)    -> 中性
-      <40  (档位 -1/-2) -> 抄底
-    返回值必须与 Notion「信号状态」列的选项逐字一致（含 emoji）。
-    """
-    if progress is None:
-        return None
-    if progress >= 60:
-        return "🔴逃顶"
-    if progress >= 40:
-        return "⚪中性"
-    return "🟢抄底"
-
-
 def update_row(page_id, value, progress):
     """写回单行的 当前值 / 当前进度 / 信号状态 / 最近更新"""
     today = datetime.date.today().isoformat()
@@ -136,7 +118,7 @@ def update_row(page_id, value, progress):
         # 「当前进度」是 Notion 的 number 列：档位公式要拿它做数值比较，
         # 排序和进度条也依赖数字。改这里必须同步改 Notion 的列类型，反之亦然。
         props["当前进度"] = {"number": round(progress, 2)}
-        sig = _signal_of(progress)
+        sig = config.signal_status(progress)
         if sig:
             props["信号状态"] = {"select": {"name": sig}}
     r = requests.patch(
@@ -214,7 +196,8 @@ def main():
         success, err = update_row(rows[name], value, progress)
         if success:
             prog_str = f"{progress:.1f}%" if progress is not None else "—"
-            print(f"  [ok]   {name}: 值={_fmt_value(value)} 进度={prog_str}")
+            status_str = config.signal_status(progress) or "—"
+            print(f"  [ok]   {name}: 值={_fmt_value(value)} 进度={prog_str} 状态={status_str}")
             ok += 1
         else:
             print(f"  [fail] {name} 写回失败: {err}")
